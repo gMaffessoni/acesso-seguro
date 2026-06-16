@@ -3,6 +3,7 @@ import session from 'express-session';
 import { inertiaMiddleware } from './middleware/inertia.js'; // Seu middleware customizado
 import sequelize from './config/database.js';
 import visitanteRouter from './routers/visitante.router.js';
+import moradorRouter from './routers/morador.router.js';
 import 'dotenv/config';
 
 const app = express();
@@ -16,25 +17,7 @@ app.use(session({
   saveUninitialized: true
 }));
 
-// Template ajustado com o Tailwind e com o caminho correto do Vite/React
-// const htmlTemplate = (page) => `
-// <!DOCTYPE html>
-// <html lang="pt-BR">
-//   <head>
-//     <meta charset="UTF-8" />
-//     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-//     <title>Acesso Seguro</title>
-    
-//     <script src="https://cdn.tailwindcss.com"></script>
-//   </head>
-//   <body>
-//     <div id="app" data-page='${JSON.stringify(page)}'></div>
-    
-//     <script type="module" src="http://localhost:5173/@vite/client"></script>
-//     <script type="module" src="http://localhost:5173/app.jsx"></script>
-//   </body>
-// </html>
-// `;
+
 // Template ajustado com o Tailwind, caminho do Vite e o Preamble do React
 const htmlTemplate = (page) => `
 <!DOCTYPE html>
@@ -80,6 +63,7 @@ app.use((req, res, next) => {
   next();
 });
 app.use(visitanteRouter);
+app.use(moradorRouter);
 
 const PORT = process.env.PORT || 3000;
 sequelize.sync({ force: false }).then(() => {

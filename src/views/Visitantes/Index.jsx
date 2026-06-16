@@ -17,25 +17,31 @@ export default function Index({
   useEffect(() => setAbrirCadastro(showModalCadastro), [showModalCadastro]);
   useEffect(() => setAbrirEdicao(showModalEdicao),     [showModalEdicao]);
 
+  // 1. Novos campos adicionados aos formulários
   const novoForm = useForm({
-    nome:     dadosPreenchidos?.nome     || '',
-    cpf:      dadosPreenchidos?.cpf      || '',
-    telefone: dadosPreenchidos?.telefone || '',
+    nome:         dadosPreenchidos?.nome         || '',
+    cpf:          dadosPreenchidos?.cpf          || '',
+    telefone:     dadosPreenchidos?.telefone     || '',
+    tempo_visita: dadosPreenchidos?.tempo_visita || '',
+    placa_carro:  dadosPreenchidos?.placa_carro  || '',
   });
 
   const editarForm = useForm({
-    nome:     visitanteForm?.nome     || '',
-    cpf:      visitanteForm?.cpf      || '',
-    telefone: visitanteForm?.telefone || '',
+    nome:         visitanteForm?.nome         || '',
+    cpf:          visitanteForm?.cpf          || '',
+    telefone:     visitanteForm?.telefone     || '',
+    tempo_visita: visitanteForm?.tempo_visita || '',
+    placa_carro:  visitanteForm?.placa_carro  || '',
   });
 
-  // Atualiza os campos do formulário de edição quando o backend mandar os dados do visitante
   useEffect(() => {
     if (visitanteForm) {
       editarForm.setData({
-        nome: visitanteForm.nome || '',
-        cpf: visitanteForm.cpf || '',
-        telefone: visitanteForm.telefone || '',
+        nome:         visitanteForm.nome         || '',
+        cpf:          visitanteForm.cpf          || '',
+        telefone:     visitanteForm.telefone     || '',
+        tempo_visita: visitanteForm.tempo_visita || '',
+        placa_carro:  visitanteForm.placa_carro  || '',
       });
     }
   }, [visitanteForm]);
@@ -63,6 +69,11 @@ export default function Index({
     });
   }
 
+  // 2. Nova função para registrar a saída
+  function registrarSaida(v) {
+    router.put(`/visitantes/${v.id}/saida`);
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 font-sans antialiased text-slate-800">
 
@@ -72,16 +83,20 @@ export default function Index({
           <span className="text-2xl">🔐</span>
           <div>
             <div className="text-lg font-bold tracking-wide">Acesso Seguro</div>
-            <div className="text-xs text-slate-400">Controle de Visitantes</div>
+            <div className="text-xs text-slate-400">Controle de Visitantes e Histórico</div>
           </div>
         </div>
-        <div className="bg-white/10 px-4 py-1.5 rounded-full text-xs font-medium">
-          {visitantes.length} visitante(s)
+        {/* 3. Botão de voltar ao Menu Inicial adicionado */}
+        <div className="flex gap-4 items-center">
+          <a href="/" className="text-sm text-indigo-200 hover:text-white transition-colors">⬅ Voltar ao Menu</a>
+          <div className="bg-white/10 px-4 py-1.5 rounded-full text-xs font-medium">
+            {visitantes.length} visitante(s)
+          </div>
         </div>
       </header>
 
       {/* ── Main ── */}
-      <main className="max-w-5xl mx-auto my-8 px-4">
+      <main className="max-w-[1200px] mx-auto my-8 px-4">
 
         {/* Notificações Flash */}
         {flash?.success && (
@@ -114,7 +129,8 @@ export default function Index({
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider border-b border-slate-100">
-                  {['#', 'Nome', 'CPF', 'Telefone', 'Ações'].map((h, idx) => (
+                  {/* 4. Títulos das colunas atualizados */}
+                  {['#', 'Nome', 'CPF/Contato', 'Placa', 'Tempo Previsto', 'Entrada', 'Saída', 'Ações'].map((h, idx) => (
                     <th key={h} className={`p-4 ${idx === 0 ? 'w-12 text-center' : ''}`}>{h}</th>
                   ))}
                 </tr>
@@ -122,7 +138,7 @@ export default function Index({
               <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
                 {visitantes.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-12 text-center text-slate-400 italic">
+                    <td colSpan={8} className="p-12 text-center text-slate-400 italic">
                       Nenhum visitante cadastrado ainda.
                     </td>
                   </tr>
@@ -131,9 +147,34 @@ export default function Index({
                     <tr key={v.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="p-4 text-center text-slate-400 font-mono">{i + 1}</td>
                       <td className="p-4 font-semibold text-slate-950">{v.nome}</td>
-                      <td className="p-4 font-mono text-slate-600">{v.cpf}</td>
-                      <td className="p-4 text-slate-600">{v.telefone || '—'}</td>
-                      <td className="p-4 space-x-2">
+                      <td className="p-4 text-xs text-slate-600">
+                        <div className="font-mono">{v.cpf}</div>
+                        <div>{v.telefone || '—'}</div>
+                      </td>
+                      <td className="p-4">
+                        {v.placa_carro ? <span className="bg-slate-100 border border-slate-200 px-2 py-1 rounded font-mono text-xs">{v.placa_carro}</span> : '—'}
+                      </td>
+                      <td className="p-4 text-slate-600">{v.tempo_visita || '—'}</td>
+                      <td className="p-4 text-xs font-mono text-emerald-700">
+                        {v.hora_entrada ? new Date(v.hora_entrada).toLocaleString('pt-BR') : '—'}
+                      </td>
+                      <td className="p-4 text-xs font-mono">
+                        {v.hora_saida ? (
+                          <span className="text-rose-700">{new Date(v.hora_saida).toLocaleString('pt-BR')}</span>
+                        ) : (
+                          <span className="text-slate-400 italic">No local</span>
+                        )}
+                      </td>
+                      <td className="p-4 space-x-2 whitespace-nowrap">
+                        {/* 5. Botão de Saída só aparece se a pessoa ainda não saiu */}
+                        {!v.hora_saida && (
+                          <button 
+                            onClick={() => registrarSaida(v)}
+                            className="bg-amber-100 hover:bg-amber-200 text-amber-900 font-medium px-3 py-1.5 rounded-md text-xs transition-colors"
+                          >
+                            Dar Saída
+                          </button>
+                        )}
                         <a 
                           href={`/visitantes/${v.id}/editar`} 
                           className="inline-block bg-indigo-50 hover:bg-indigo-100 text-indigo-900 font-medium px-3 py-1.5 rounded-md text-xs transition-colors"
@@ -160,10 +201,19 @@ export default function Index({
       {abrirCadastro && (
         <Modal titulo="Novo Visitante" onClose={() => setAbrirCadastro(false)}>
           <form onSubmit={cadastrar} className="space-y-4">
-            <Campo label="Nome completo" value={novoForm.data.nome} onChange={v => novoForm.setData('nome', v)} error={novoForm.errors.nome} />
-            <Campo label="CPF" value={novoForm.data.cpf} onChange={v => novoForm.setData('cpf', v)} error={novoForm.errors.cpf} />
-            <Campo label="Telefone" value={novoForm.data.telefone} onChange={v => novoForm.setData('telefone', v)} />
+            <Campo label="Nome completo *" value={novoForm.data.nome} onChange={v => novoForm.setData('nome', v)} error={novoForm.errors.nome} />
+            <div className="grid grid-cols-2 gap-4">
+              <Campo label="CPF *" value={novoForm.data.cpf} onChange={v => novoForm.setData('cpf', v)} error={novoForm.errors.cpf} />
+              <Campo label="Telefone" value={novoForm.data.telefone} onChange={v => novoForm.setData('telefone', v)} />
+            </div>
+            {/* 6. Novos inputs no modal */}
+            <div className="grid grid-cols-2 gap-4">
+              <Campo label="Placa do Veículo" value={novoForm.data.placa_carro} onChange={v => novoForm.setData('placa_carro', v)} />
+              <Campo label="Tempo de Visita" value={novoForm.data.tempo_visita} onChange={v => novoForm.setData('tempo_visita', v)} />
+            </div>
+            
             {fieldErrors && <p className="text-xs text-rose-600 font-medium mt-1">{fieldErrors}</p>}
+            
             <Rodape>
               <button type="button" className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors" onClick={() => setAbrirCadastro(false)}>Cancelar</button>
               <button type="submit" className="bg-indigo-900 hover:bg-indigo-950 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50" disabled={novoForm.processing}>
@@ -178,9 +228,17 @@ export default function Index({
       {abrirEdicao && visitanteForm && (
         <Modal titulo="Editar Visitante" onClose={() => setAbrirEdicao(false)}>
           <form onSubmit={atualizar} className="space-y-4">
-            <Campo label="Nome completo" value={editarForm.data.nome} onChange={v => editarForm.setData('nome', v)} error={editarForm.errors.nome} />
-            <Campo label="CPF" value={editarForm.data.cpf} onChange={v => editarForm.setData('cpf', v)} error={editarForm.errors.cpf} />
-            <Campo label="Telefone" value={editarForm.data.telefone} onChange={v => editarForm.setData('telefone', v)} />
+            <Campo label="Nome completo *" value={editarForm.data.nome} onChange={v => editarForm.setData('nome', v)} error={editarForm.errors.nome} />
+            <div className="grid grid-cols-2 gap-4">
+              <Campo label="CPF *" value={editarForm.data.cpf} onChange={v => editarForm.setData('cpf', v)} error={editarForm.errors.cpf} />
+              <Campo label="Telefone" value={editarForm.data.telefone} onChange={v => editarForm.setData('telefone', v)} />
+            </div>
+            {/* 6. Novos inputs no modal de edição */}
+            <div className="grid grid-cols-2 gap-4">
+              <Campo label="Placa do Veículo" value={editarForm.data.placa_carro} onChange={v => editarForm.setData('placa_carro', v)} />
+              <Campo label="Tempo de Visita" value={editarForm.data.tempo_visita} onChange={v => editarForm.setData('tempo_visita', v)} />
+            </div>
+
             <Rodape>
               <button type="button" className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors" onClick={() => setAbrirEdicao(false)}>Cancelar</button>
               <button type="submit" className="bg-indigo-900 hover:bg-indigo-950 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50" disabled={editarForm.processing}>
@@ -218,7 +276,7 @@ function Modal({ titulo, onClose, children }) {
       <div className="bg-white rounded-xl w-full max-w-md shadow-xl border border-slate-100 overflow-hidden transform scale-100 transition-transform">
         <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100">
           <h3 className="text-base font-bold text-slate-900">{titulo}</h3>
-          <button className="text-slate-400 hover:text-slate-600 text-lg transition-colors" onClick={onClose}>✕</button>
+          <button className="text-slate-400 hover:text-slate-600 text-lg transition-colors" type="button" onClick={onClose}>✕</button>
         </div>
         <div className="p-6">{children}</div>
       </div>

@@ -71,6 +71,19 @@ class VisitanteController {
     }
     return res.redirect(303,'/visitantes');
   }
+  
+  async registrarSaida(req, res) {
+    const { id } = req.params;
+    // Pega a data e hora atual
+    const resultado = await VisitanteDataAccess.update(id, { hora_saida: new Date() });
+
+    if (resultado.status === 'ok') {
+      req.session.flash = { success: "Saída registrada com sucesso!" };
+    } else {
+      req.session.flash = { error: "Erro ao registrar saída." };
+    }
+    return res.redirect(303, '/visitantes');
+  }
 }
 
 export default new VisitanteController();
