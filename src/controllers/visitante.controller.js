@@ -52,11 +52,11 @@ class VisitanteController {
     switch (resultado.status) {
       case 'ok':
         req.session.flash = { success: "Cadastro atualizado!" };
-        return res.redirect('/visitantes');
+        return res.redirect(303,'/visitantes');
       case 'error':
       case 'not_found':
         req.session.flash = { error: "Não foi possível atualizar." };
-        return res.redirect('/visitantes');
+        return res.redirect(303,'/visitantes');
     }
   }
 
@@ -69,7 +69,7 @@ class VisitanteController {
     } else {
       req.session.flash = { error: "Erro ao remover visitante." };
     }
-    return res.redirect('/visitantes');
+    return res.redirect(303,'/visitantes');
   }
 }
 

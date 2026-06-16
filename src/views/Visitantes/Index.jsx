@@ -26,7 +26,7 @@ export default function Index({
   const editarForm = useForm({
     nome:     visitanteForm?.nome     || '',
     cpf:      visitanteForm?.cpf      || '',
-    telefone: visitorForm?.telefone || '',
+    telefone: visitanteForm?.telefone || '',
   });
 
   // Atualiza os campos do formulário de edição quando o backend mandar os dados do visitante
