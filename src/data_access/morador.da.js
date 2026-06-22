@@ -14,7 +14,7 @@ class MoradorDataAccess {
       const novo = await Morador.create(data);
       return { status: 'ok', data: novo }; 
     } catch (error) {
-      return { status: 'error', errors: error.message }; 
+      return { status: 'error', error: error }; 
     }
   }
 
@@ -25,7 +25,7 @@ class MoradorDataAccess {
       const atualizado = await morador.update(data);
       return { status: 'ok', data: atualizado };
     } catch (error) {
-      return { status: 'error', errors: error.message };
+      return { status: 'error', error: error };
     }
   }
 

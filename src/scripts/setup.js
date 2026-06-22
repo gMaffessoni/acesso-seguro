@@ -30,7 +30,7 @@ async function setup() {
 
   await client.end();
 
-  await sequelize.sync({ force: false });
+  await sequelize.sync({ alter: true });
   console.log('✅ Tabelas sincronizadas!');
 
   await sequelize.close();

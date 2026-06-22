@@ -12,9 +12,9 @@ class VisitanteDataAccess {
   async create(data) {
     try {
       const novo = await Visitante.create(data);
-      return { status: 'ok', data: novo }; 
+      return { status: 'ok', data: novo };
     } catch (error) {
-      return { status: 'error', errors: error.message }; 
+      return { status: 'error', error: error };
     }
   }
 
@@ -25,7 +25,7 @@ class VisitanteDataAccess {
       const atualizado = await visitante.update(data);
       return { status: 'ok', data: atualizado };
     } catch (error) {
-      return { status: 'error', errors: error.message };
+      return { status: 'error', error: error };
     }
   }
 

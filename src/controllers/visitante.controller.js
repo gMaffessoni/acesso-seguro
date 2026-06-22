@@ -2,79 +2,144 @@ import VisitanteDataAccess from '../data_access/visitante.da.js';
 
 class VisitanteController {
   
-  async index(req, res) {
+  index = async (req, res) => {
     const visitantes = await VisitanteDataAccess.getAll();
     return res.inertia('Visitantes/Index', { visitantes, showModalCadastro: false });
   }
 
-  async new(req, res) {
+  new = async (req, res) => {
     const visitantes = await VisitanteDataAccess.getAll();
     return res.inertia('Visitantes/Index', { visitantes, showModalCadastro: true });
   }
 
-  async create(req, res) {
-    const resultado = await VisitanteDataAccess.create(req.body);
+  create = async (req, res) => {
+    const data = { ...req.body };
 
-    switch (resultado.status) {
-      case 'ok':
-        req.session.flash = { success: "Visitante cadastrado com sucesso!" };
-        return res.redirect('/visitantes');
-        
-      case 'error':
-        req.session.flash = { error: "Erro ao salvar os dados do visitante." }; 
-        return res.inertia('Visitantes/Index', {
-          visitantes: await VisitanteDataAccess.getAll(),
-          showModalCadastro: true,
-          fieldErrors: resultado.errors,
-          dadosPreenchidos: req.body
-        });
+    // Limpeza de dados
+    if (data.cpf) data.cpf = data.cpf.replace(/\D/g, '');
+    if (data.telefone) data.telefone = data.telefone.replace(/\D/g, '');
+
+    // Validação básica
+    const validationErrors = this._validate(data);
+    if (Object.keys(validationErrors).length > 0) {
+      req.session.errors = validationErrors;
+      return res.redirect(303, '/visitantes');
+    }
+
+    const resultado = await VisitanteDataAccess.create(data);
+
+    if (resultado.status === 'ok') {
+      req.session.flash = { success: "Visitante cadastrado com sucesso!" };
+      return res.redirect(303, '/visitantes');
+    } else {
+      const errors = this._handleError(resultado.error);
+      if (Object.keys(errors).length > 0) {
+        req.session.errors = errors;
+      } else {
+        req.session.flash = { error: "Erro ao salvar os dados do visitante." };
+      }
+      return res.redirect(303, '/visitantes');
     }
   }
 
-  async edit(req, res) {
+  edit = async (req, res) => {
     const { id } = req.params;
-    const visitantes = await VisitanteDataAccess.getAll();
     const visitante = await VisitanteDataAccess.getById(id);
     
     if (!visitante) return res.redirect('/visitantes');
 
     return res.inertia('Visitantes/Index', { 
-      visitantes, 
-      visitanteForm: visitante, 
+      visitantes: await VisitanteDataAccess.getAll(), 
+      visitanteProp: visitante, 
       showModalEdicao: true 
     });
   }
 
-  async update(req, res) {
+  update = async (req, res) => {
     const { id } = req.params;
-    const resultado = await VisitanteDataAccess.update(id, req.body);
+    const data = { ...req.body };
 
-    switch (resultado.status) {
-      case 'ok':
-        req.session.flash = { success: "Cadastro atualizado!" };
-        return res.redirect(303,'/visitantes');
-      case 'error':
-      case 'not_found':
+    // Limpeza de dados
+    if (data.cpf) data.cpf = data.cpf.replace(/\D/g, '');
+    if (data.telefone) data.telefone = data.telefone.replace(/\D/g, '');
+
+    // Validação básica
+    const validationErrors = this._validate(data);
+    if (Object.keys(validationErrors).length > 0) {
+      req.session.errors = validationErrors;
+      return res.redirect(303, '/visitantes');
+    }
+
+    const resultado = await VisitanteDataAccess.update(id, data);
+
+    if (resultado.status === 'ok') {
+      req.session.flash = { success: "Cadastro atualizado!" };
+      return res.redirect(303, '/visitantes');
+    } else if (resultado.status === 'not_found') {
+      req.session.flash = { error: "Visitante não encontrado." };
+      return res.redirect(303, '/visitantes');
+    } else {
+      const errors = this._handleError(resultado.error);
+      if (Object.keys(errors).length > 0) {
+        req.session.errors = errors;
+      } else {
         req.session.flash = { error: "Não foi possível atualizar." };
-        return res.redirect(303,'/visitantes');
+      }
+      return res.redirect(303, '/visitantes');
     }
   }
 
-  async delete(req, res) {
-    const { id } = req.params;
-    const deletado = await VisitanteDataAccess.delete(id);
-    
-    if (deletado) {
-      req.session.flash = { success: "Visitante removido do sistema." };
-    } else {
-      req.session.flash = { error: "Erro ao remover visitante." };
+  _validate = (data) => {
+    const errors = {};
+    if (!data.nome || data.nome.trim() === '') errors.nome = 'O nome é obrigatório.';
+    if (!data.cpf || data.cpf.trim() === '') errors.cpf = 'O CPF é obrigatório.';
+    if (data.cpf && data.cpf.length !== 11) errors.cpf = 'O CPF deve conter 11 dígitos.';
+    return errors;
+  }
+
+  _handleError = (error) => {
+    const errors = {};
+    if (!error) return errors;
+
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      error.errors.forEach(err => {
+        if (err.path === 'cpf') errors.cpf = 'Este CPF já está cadastrado.';
+        else errors[err.path] = 'Este valor já está em uso.';
+      });
+    } else if (error.name === 'SequelizeValidationError') {
+      error.errors.forEach(err => {
+        errors[err.path] = err.message;
+      });
     }
-    return res.redirect(303,'/visitantes');
+    return errors;
+  }
+
+  inativar = async (req, res) => {
+    const { id } = req.params;
+    const resultado = await VisitanteDataAccess.update(id, { ativo: false });
+    
+    if (resultado.status === 'ok') {
+      req.session.flash = { success: "Visitante inativado com sucesso." };
+    } else {
+      req.session.flash = { error: "Erro ao inativar visitante." };
+    }
+    return res.redirect(303, '/visitantes');
+  }
+
+  ativar = async (req, res) => {
+    const { id } = req.params;
+    const resultado = await VisitanteDataAccess.update(id, { ativo: true });
+    
+    if (resultado.status === 'ok') {
+      req.session.flash = { success: "Visitante ativado com sucesso." };
+    } else {
+      req.session.flash = { error: "Erro ao ativar visitante." };
+    }
+    return res.redirect(303, '/visitantes');
   }
   
-  async registrarSaida(req, res) {
+  registrarSaida = async (req, res) => {
     const { id } = req.params;
-    // Pega a data e hora atual
     const resultado = await VisitanteDataAccess.update(id, { hora_saida: new Date() });
 
     if (resultado.status === 'ok') {

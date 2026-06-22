@@ -1,5 +1,6 @@
 import sequelize from '../config/database.js';
 import Morador from '../models/morador.model.js';
+import Visitante from '../models/visitante.model.js';
 import 'dotenv/config';
 
 const moradoresFicticios = [
@@ -9,21 +10,40 @@ const moradoresFicticios = [
   { nome: 'Fernando Alves', cpf: '444.444.444-44', telefone: '(11) 98888-4444', numero_casa: '104', placa_carro: 'DEF-5678' }
 ];
 
+const visitantesFicticios = [
+  { nome: 'João da Silva', cpf: '555.555.555-55', telefone: '(11) 97777-1111', placa_carro: 'JJJ-1111', tempo_visita: 'Algumas horas' },
+  { nome: 'Maria Oliveira', cpf: '666.666.666-66', telefone: '(11) 97777-2222', placa_carro: 'MMM-2222', tempo_visita: 'O dia todo' }
+];
+
 async function seedDatabase() {
   try {
     // Conecta ao banco de dados
     await sequelize.authenticate();
     console.log('⏳ Conectando ao banco de dados...');
 
+    // Garante que as tabelas existam
+    await sequelize.sync();
+    console.log('⏳ Sincronizando tabelas...');
+
     // Conta quantos moradores já existem
-    const count = await Morador.count();
+    const countMoradores = await Morador.count();
     
-    if (count === 0) {
+    if (countMoradores === 0) {
       // Se não tiver nenhum, insere a lista inteira
       await Morador.bulkCreate(moradoresFicticios);
       console.log('✅ Moradores fictícios inseridos com sucesso!');
     } else {
-      console.log(`ℹ️ O banco já possui ${count} morador(es). Nenhuma ação realizada para não duplicar dados.`);
+      console.log(`ℹ️ O banco já possui ${countMoradores} morador(es).`);
+    }
+
+    // Conta quantos visitantes já existem
+    const countVisitantes = await Visitante.count();
+
+    if (countVisitantes === 0) {
+      await Visitante.bulkCreate(visitantesFicticios);
+      console.log('✅ Visitantes fictícios inseridos com sucesso!');
+    } else {
+      console.log(`ℹ️ O banco já possui ${countVisitantes} visitante(es).`);
     }
 
   } catch (error) {

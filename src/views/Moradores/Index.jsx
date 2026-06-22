@@ -4,12 +4,22 @@ import { useState, useEffect } from 'react';
 export default function Index({
   moradores = [],
   flash = {},
-  showModalCadastro = false
+  errors = {},
+  showModalCadastro = false,
+  showModalEdicao = false,
+  moradorProp = null
 }) {
   const [abrirCadastro, setAbrirCadastro] = useState(showModalCadastro);
-  const [abrirEdicao,   setAbrirEdicao]   = useState(false);
-  const [moradorForm,   setMoradorForm]   = useState(null);
-  const [excluindo,     setExcluindo]     = useState(null);
+  const [abrirEdicao,   setAbrirEdicao]   = useState(showModalEdicao);
+  const [moradorForm,   setMoradorForm]   = useState(moradorProp);
+  const [inativando,     setInativando]     = useState(null);
+
+  useEffect(() => setAbrirCadastro(showModalCadastro), [showModalCadastro]);
+  
+  useEffect(() => {
+    setAbrirEdicao(showModalEdicao);
+    if (moradorProp) setMoradorForm(moradorProp);
+  }, [showModalEdicao, moradorProp]);
 
   const novoForm = useForm({
     nome: '', cpf: '', telefone: '', placa_carro: '', numero_casa: ''
@@ -18,6 +28,47 @@ export default function Index({
   const editarForm = useForm({
     nome: '', cpf: '', telefone: '', placa_carro: '', numero_casa: ''
   });
+
+  const [exibirFlash, setExibirFlash] = useState(false);
+
+  useEffect(() => {
+    if (flash?.success || flash?.error) {
+      setExibirFlash(true);
+      const timer = setTimeout(() => setExibirFlash(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [flash]);
+
+  const maskCPF = (value) => {
+    if (!value) return '';
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+      .replace(/(-\d{2})\d+?$/, '$1');
+  };
+
+  const maskPhone = (value) => {
+    if (!value) return '';
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{5})(\d)/, '$1-$2')
+      .replace(/(-\d{4})\d+?$/, '$1');
+  };
+
+  useEffect(() => {
+    if (moradorForm) {
+      editarForm.setData({
+        nome: moradorForm.nome || '',
+        cpf: maskCPF(moradorForm.cpf || ''),
+        telefone: maskPhone(moradorForm.telefone || ''),
+        placa_carro: moradorForm.placa_carro || '',
+        numero_casa: moradorForm.numero_casa || ''
+      });
+    }
+  }, [moradorForm]);
 
   function cadastrar(e) {
     e.preventDefault();
@@ -31,13 +82,6 @@ export default function Index({
 
   function abrirModalEdicao(morador) {
     setMoradorForm(morador);
-    editarForm.setData({
-      nome: morador.nome || '',
-      cpf: morador.cpf || '',
-      telefone: morador.telefone || '',
-      placa_carro: morador.placa_carro || '',
-      numero_casa: morador.numero_casa || ''
-    });
     setAbrirEdicao(true);
   }
 
@@ -48,16 +92,46 @@ export default function Index({
     });
   }
 
-  function excluir(v) {
-    router.delete(`/moradores/${v.id}`, {
-      onSuccess: () => setExcluindo(null),
+  function inativar(v) {
+    router.put(`/moradores/${v.id}/inativar`, {}, {
+      onSuccess: () => setInativando(null),
+      onFinish: () => setInativando(null),
+      preserveScroll: true
     });
   }
 
-  return (
-    <div className="min-h-screen bg-slate-100 font-sans antialiased text-slate-800">
+  function ativar(v) {
+    router.put(`/moradores/${v.id}/ativar`, {}, {
+      onSuccess: () => setInativando(null),
+      onFinish: () => setInativando(null),
+      preserveScroll: true
+    });
+  }
 
-      {/* ── Header ── */}
+  const moradoresAtivos = moradores.filter(m => m.ativo !== false);
+
+  return (
+    <div className="min-h-screen bg-slate-100 font-sans antialiased text-slate-800 relative">
+
+      {exibirFlash && (flash?.success || flash?.error) && (
+        <div className="fixed top-20 right-6 z-[60] animate-slide-in">
+          {flash.success && (
+            <div className="bg-emerald-600 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-emerald-500/50 backdrop-blur-md">
+              <span className="text-xl">✅</span>
+              <span className="font-medium">{flash.success}</span>
+              <button onClick={() => setExibirFlash(false)} className="ml-2 hover:text-emerald-200 transition-colors">✕</button>
+            </div>
+          )}
+          {flash.error && (
+            <div className="bg-rose-600 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-rose-500/50 backdrop-blur-md">
+              <span className="text-xl">❌</span>
+              <span className="font-medium">{flash.error}</span>
+              <button onClick={() => setExibirFlash(false)} className="ml-2 hover:text-rose-200 transition-colors">✕</button>
+            </div>
+          )}
+        </div>
+      )}
+
       <header className="bg-gradient-to-r from-emerald-900 to-teal-950 text-white px-8 h-16 flex items-center justify-between shadow-md">
         <div className="flex items-center gap-3">
           <span className="text-2xl">🏠</span>
@@ -69,32 +143,18 @@ export default function Index({
         <div className="flex gap-4 items-center">
           <a href="/" className="text-sm text-emerald-200 hover:text-white transition-colors">⬅ Voltar ao Menu</a>
           <div className="bg-white/10 px-4 py-1.5 rounded-full text-xs font-medium">
-            {moradores.length} morador(es)
+            {moradoresAtivos.length} morador(es) ativos
           </div>
         </div>
       </header>
 
-      {/* ── Main ── */}
       <main className="max-w-6xl mx-auto my-8 px-4">
 
-        {/* Notificações Flash */}
-        {flash?.success && (
-          <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg p-3.5 mb-4 flex items-center gap-2 text-sm shadow-sm animate-fade-in">
-            <span>✅</span> {flash.success}
-          </div>
-        )}
-        {flash?.error && (
-          <div className="bg-rose-50 text-rose-800 border border-rose-200 rounded-lg p-3.5 mb-4 flex items-center gap-2 text-sm shadow-sm animate-fade-in">
-            <span>❌</span> {flash.error}
-          </div>
-        )}
-
-        {/* Tabela Card */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 overflow-hidden">
           <div className="flex justify-between items-center p-6 border-b border-slate-100">
             <div>
               <h2 className="text-lg font-bold text-slate-900">Moradores cadastrados</h2>
-              <p className="text-xs text-slate-400 mt-0.5">{moradores.length} registro(s)</p>
+              <p className="text-xs text-slate-400 mt-0.5">{moradores.length} registro(s) no total</p>
             </div>
             <button 
               className="bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg px-4 py-2 text-sm font-semibold transition-colors shadow-sm"
@@ -108,7 +168,7 @@ export default function Index({
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider border-b border-slate-100">
-                  {['#', 'Casa', 'Nome', 'CPF', 'Telefone', 'Placa', 'Ações'].map((h, idx) => (
+                  {['#', 'Casa', 'Nome', 'CPF', 'Telefone', 'Placa', 'Status', 'Ações'].map((h, idx) => (
                     <th key={h} className={`p-4 ${idx === 0 ? 'w-12 text-center' : ''}`}>{h}</th>
                   ))}
                 </tr>
@@ -116,20 +176,27 @@ export default function Index({
               <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
                 {moradores.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-12 text-center text-slate-400 italic">
+                    <td colSpan={8} className="p-12 text-center text-slate-400 italic">
                       Nenhum morador cadastrado ainda.
                     </td>
                   </tr>
                 ) : (
                   moradores.map((m, i) => (
-                    <tr key={m.id} className="hover:bg-slate-50/50 transition-colors">
+                    <tr key={m.id} className={`hover:bg-slate-50/50 transition-colors ${m.ativo === false ? 'bg-slate-50 text-slate-400' : ''}`}>
                       <td className="p-4 text-center text-slate-400 font-mono">{i + 1}</td>
                       <td className="p-4 font-bold text-emerald-700">Nº {m.numero_casa}</td>
-                      <td className="p-4 font-semibold text-slate-950">{m.nome}</td>
-                      <td className="p-4 font-mono text-slate-600">{m.cpf}</td>
-                      <td className="p-4 text-slate-600">{m.telefone || '—'}</td>
+                      <td className={`p-4 font-semibold ${m.ativo === false ? 'text-slate-400' : 'text-slate-950'}`}>{m.nome}</td>
+                      <td className="p-4 font-mono">{maskCPF(m.cpf)}</td>
+                      <td className="p-4">{m.telefone ? maskPhone(m.telefone) : '—'}</td>
                       <td className="p-4">
                         {m.placa_carro ? <span className="bg-slate-100 border border-slate-200 px-2 py-1 rounded font-mono text-xs">{m.placa_carro}</span> : '—'}
+                      </td>
+                      <td className="p-4 text-center">
+                        {m.ativo !== false ? (
+                          <span className="text-emerald-600 font-bold text-lg" title="Ativo">✓</span>
+                        ) : (
+                          <span className="text-rose-600 font-bold text-lg" title="Inativo">✕</span>
+                        )}
                       </td>
                       <td className="p-4 space-x-2">
                         <button 
@@ -138,12 +205,21 @@ export default function Index({
                         >
                           Editar
                         </button>
-                        <button 
-                          onClick={() => setExcluindo(m)}
-                          className="bg-rose-50 hover:bg-rose-100 text-rose-700 font-medium px-3 py-1.5 rounded-md text-xs transition-colors"
-                        >
-                          Excluir
-                        </button>
+                        {m.ativo !== false ? (
+                          <button 
+                            onClick={() => setInativando(m)}
+                            className="bg-rose-50 hover:bg-rose-100 text-rose-700 font-medium px-3 py-1.5 rounded-md text-xs transition-colors"
+                          >
+                            Inativar
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => ativar(m)}
+                            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium px-3 py-1.5 rounded-md text-xs transition-colors"
+                          >
+                            Ativar
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -154,17 +230,16 @@ export default function Index({
         </div>
       </main>
 
-      {/* ── Modal: Cadastro ── */}
       {abrirCadastro && (
         <Modal titulo="Novo Morador" onClose={() => setAbrirCadastro(false)}>
           <form onSubmit={cadastrar} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <Campo label="Número da Casa *" value={novoForm.data.numero_casa} onChange={v => novoForm.setData('numero_casa', v)} error={novoForm.errors.numero_casa} />
-              <Campo label="Placa do Carro" value={novoForm.data.placa_carro} onChange={v => novoForm.setData('placa_carro', v)} />
+              <Campo label="Placa do Carro" value={novoForm.data.placa_carro} onChange={v => novoForm.setData('placa_carro', v)} error={novoForm.errors.placa_carro} />
             </div>
             <Campo label="Nome completo *" value={novoForm.data.nome} onChange={v => novoForm.setData('nome', v)} error={novoForm.errors.nome} />
-            <Campo label="CPF *" value={novoForm.data.cpf} onChange={v => novoForm.setData('cpf', v)} error={novoForm.errors.cpf} />
-            <Campo label="Telefone" value={novoForm.data.telefone} onChange={v => novoForm.setData('telefone', v)} />
+            <Campo label="CPF *" value={novoForm.data.cpf} onChange={v => novoForm.setData('cpf', maskCPF(v))} error={novoForm.errors.cpf} />
+            <Campo label="Telefone" value={novoForm.data.telefone} onChange={v => novoForm.setData('telefone', maskPhone(v))} error={novoForm.errors.telefone} />
             <Rodape>
               <button type="button" className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors" onClick={() => setAbrirCadastro(false)}>Cancelar</button>
               <button type="submit" className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50" disabled={novoForm.processing}>
@@ -175,17 +250,16 @@ export default function Index({
         </Modal>
       )}
 
-      {/* ── Modal: Edição ── */}
       {abrirEdicao && moradorForm && (
         <Modal titulo="Editar Morador" onClose={() => setAbrirEdicao(false)}>
           <form onSubmit={atualizar} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <Campo label="Número da Casa *" value={editarForm.data.numero_casa} onChange={v => editarForm.setData('numero_casa', v)} error={editarForm.errors.numero_casa} />
-              <Campo label="Placa do Carro" value={editarForm.data.placa_carro} onChange={v => editarForm.setData('placa_carro', v)} />
+              <Campo label="Placa do Carro" value={editarForm.data.placa_carro} onChange={v => editarForm.setData('placa_carro', v)} error={editarForm.errors.placa_carro} />
             </div>
             <Campo label="Nome completo *" value={editarForm.data.nome} onChange={v => editarForm.setData('nome', v)} error={editarForm.errors.nome} />
-            <Campo label="CPF *" value={editarForm.data.cpf} onChange={v => editarForm.setData('cpf', v)} error={editarForm.errors.cpf} />
-            <Campo label="Telefone" value={editarForm.data.telefone} onChange={v => editarForm.setData('telefone', v)} />
+            <Campo label="CPF *" value={editarForm.data.cpf} onChange={v => editarForm.setData('cpf', maskCPF(v))} error={editarForm.errors.cpf} />
+            <Campo label="Telefone" value={editarForm.data.telefone} onChange={v => editarForm.setData('telefone', maskPhone(v))} error={editarForm.errors.telefone} />
             <Rodape>
               <button type="button" className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors" onClick={() => setAbrirEdicao(false)}>Cancelar</button>
               <button type="submit" className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50" disabled={editarForm.processing}>
@@ -196,16 +270,15 @@ export default function Index({
         </Modal>
       )}
 
-      {/* ── Modal: Confirmação de exclusão ── */}
-      {excluindo && (
-        <Modal titulo="Confirmar exclusão" onClose={() => setExcluindo(null)}>
+      {inativando && (
+        <Modal titulo="Confirmar inativação" onClose={() => setInativando(null)}>
           <p className="text-slate-600 text-sm mb-6 leading-relaxed">
-            Deseja remover o morador <strong className="text-slate-900 font-semibold">{excluindo.nome}</strong> (Casa {excluindo.numero_casa}) do sistema? Esta ação não pode ser desfeita.
+            Deseja inativar o morador <strong className="text-slate-900 font-semibold">{inativando.nome}</strong> (Casa {inativando.numero_casa}) do sistema? Esta ação não pode ser desfeita.
           </p>
           <Rodape>
-            <button className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors" onClick={() => setExcluindo(null)}>Cancelar</button>
-            <button className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors" onClick={() => excluir(excluindo)}>
-              Confirmar exclusão
+            <button className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors" onClick={() => setInativando(null)}>Cancelar</button>
+            <button className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors" onClick={() => inativar(inativando)}>
+              Confirmar inativação
             </button>
           </Rodape>
         </Modal>
@@ -214,8 +287,6 @@ export default function Index({
     </div>
   );
 }
-
-// ─── Componentes auxiliares ───────────────────────────────────────────────────
 
 function Modal({ titulo, onClose, children }) {
   return (
