@@ -1,3 +1,4 @@
+import VisitanteDTO from '../dtos/VisitanteDTO.js';
 import VisitanteDataAccess from '../data_access/visitante.da.js';
 
 class VisitanteController {
@@ -13,13 +14,8 @@ class VisitanteController {
   }
 
   create = async (req, res) => {
-    const data = { ...req.body };
+    const data = VisitanteDTO.fromRequest(req.body);
 
-    // Limpeza de dados
-    if (data.cpf) data.cpf = data.cpf.replace(/\D/g, '');
-    if (data.telefone) data.telefone = data.telefone.replace(/\D/g, '');
-
-    // Validação básica
     const validationErrors = this._validate(data);
     if (Object.keys(validationErrors).length > 0) {
       req.session.errors = validationErrors;
@@ -55,47 +51,44 @@ class VisitanteController {
     });
   }
 
-  update = async (req, res) => {
-    const { id } = req.params;
-    const data = { ...req.body };
+update = async (req, res) => {
+  const { id } = req.params;
+  const data = VisitanteDTO.fromRequest(req.body);
 
-    // Limpeza de dados
-    if (data.cpf) data.cpf = data.cpf.replace(/\D/g, '');
-    if (data.telefone) data.telefone = data.telefone.replace(/\D/g, '');
+  const validationErrors = this._validate(data);
+  if (Object.keys(validationErrors).length > 0) {
+    req.session.errors = validationErrors;
+    return res.redirect(303, '/visitantes');
+  }
 
-    // Validação básica
-    const validationErrors = this._validate(data);
-    if (Object.keys(validationErrors).length > 0) {
-      req.session.errors = validationErrors;
-      return res.redirect(303, '/visitantes');
-    }
+  const resultado = await VisitanteDataAccess.update(id, data);
 
-    const resultado = await VisitanteDataAccess.update(id, data);
-
-    if (resultado.status === 'ok') {
-      req.session.flash = { success: "Cadastro atualizado!" };
-      return res.redirect(303, '/visitantes');
-    } else if (resultado.status === 'not_found') {
-      req.session.flash = { error: "Visitante não encontrado." };
-      return res.redirect(303, '/visitantes');
+  if (resultado.status === 'ok') {
+    req.session.flash = { success: "Cadastro atualizado!" };
+    return res.redirect(303, '/visitantes');
+  } else if (resultado.status === 'not_found') {
+    req.session.flash = { error: "Visitante não encontrado." };
+    return res.redirect(303, '/visitantes');
+  } else {
+    const errors = this._handleError(resultado.error);
+    if (Object.keys(errors).length > 0) {
+      req.session.errors = errors;
     } else {
-      const errors = this._handleError(resultado.error);
-      if (Object.keys(errors).length > 0) {
-        req.session.errors = errors;
-      } else {
-        req.session.flash = { error: "Não foi possível atualizar." };
-      }
-      return res.redirect(303, '/visitantes');
+      req.session.flash = { error: "Não foi possível atualizar." };
     }
+    return res.redirect(303, '/visitantes');
   }
+}
 
-  _validate = (data) => {
-    const errors = {};
-    if (!data.nome || data.nome.trim() === '') errors.nome = 'O nome é obrigatório.';
-    if (!data.cpf || data.cpf.trim() === '') errors.cpf = 'O CPF é obrigatório.';
-    if (data.cpf && data.cpf.length !== 11) errors.cpf = 'O CPF deve conter 11 dígitos.';
-    return errors;
-  }
+_validate = (data) => {
+  const errors = {};
+  if (!data.nome || data.nome.trim() === '') errors.nome = 'O nome é obrigatório.';
+  if (!data.cpf || data.cpf.trim() === '') errors.cpf = 'O CPF é obrigatório.';
+  if (data.cpf && data.cpf.length !== 11) errors.cpf = 'O CPF deve conter 11 dígitos.';
+  if (!data.placa_carro || data.placa_carro.trim() === '') errors.placa_carro = 'A placa do carro é obrigatória.';
+  if (!data.tempo_visita || data.tempo_visita.trim() === '') errors.tempo_visita = 'O tempo da visita é obrigatório.';
+  return errors;
+}
 
   _handleError = (error) => {
     const errors = {};

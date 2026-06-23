@@ -6,7 +6,7 @@ const Morador = sequelize.define('Morador', {
   nome: { type: DataTypes.STRING, allowNull: false },
   cpf: { type: DataTypes.STRING, allowNull: false, unique: true },
   telefone: { type: DataTypes.STRING, allowNull: true },
-  placa_carro: { type: DataTypes.STRING, allowNull: false },
+  placa_carro: { type: DataTypes.STRING, allowNull: true },
   numero_casa: { type: DataTypes.STRING, allowNull: false },
   ativo: { type: DataTypes.BOOLEAN, defaultValue: true },
   data_inativo: { type: DataTypes.DATE, allowNull: true }
