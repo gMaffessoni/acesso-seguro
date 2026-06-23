@@ -8,12 +8,10 @@ import { initCleanupJob } from './jobs/cleanup.job.js';
 import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url'; 
+import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const distPath = path.resolve(__dirname, '../dist');
 
 const app = express();
 
@@ -26,20 +24,48 @@ app.use(session({
   saveUninitialized: true
 }));
 
+// --- SISTEMA DE BUSCA AUTOMÁTICA DA PASTA DIST ---
+// Garante que o Express vai encontrar a tela gerada pelo Vite em qualquer ambiente!
+const possiblePaths = [
+  path.join(process.cwd(), 'dist', 'index.html'),
+  path.join(__dirname, '../dist', 'index.html'),
+  path.join(__dirname, 'views', 'dist', 'index.html'),
+  path.join(process.cwd(), 'src', 'views', 'dist', 'index.html')
+];
 
-app.use(express.static(distPath));
+let finalHtmlPath = null;
+let finalDistPath = null;
+
+// O servidor vai testar os caminhos até achar onde a nuvem escondeu o arquivo
+for (const p of possiblePaths) {
+  if (fs.existsSync(p)) {
+    finalHtmlPath = p;
+    finalDistPath = path.dirname(p);
+    console.log('✅ Tela React encontrada com sucesso em:', finalDistPath);
+    break; 
+  }
+}
+
+// Libera o acesso aos arquivos estáticos (CSS/JS)
+if (finalDistPath) {
+  app.use(express.static(finalDistPath));
+}
 
 const htmlTemplate = (page) => {
   if (process.env.NODE_ENV === 'production') {
-    let template = fs.readFileSync(path.resolve(distPath, 'index.html'), 'utf-8');
-    const inertiaDiv = `<div id="app" data-page='${JSON.stringify(page)}'></div>`;
+    if (finalHtmlPath) {
+      let template = fs.readFileSync(finalHtmlPath, 'utf-8');
+      const inertiaDiv = `<div id="app" data-page='${JSON.stringify(page)}'></div>`;
 
-    if (template.includes('<div id="root"></div>')) {
-      return template.replace('<div id="root"></div>', inertiaDiv);
-    } else if (template.includes('<div id="app"></div>')) {
-      return template.replace('<div id="app"></div>', inertiaDiv);
+      if (template.includes('<div id="root"></div>')) {
+        return template.replace('<div id="root"></div>', inertiaDiv);
+      } else if (template.includes('<div id="app"></div>')) {
+        return template.replace('<div id="app"></div>', inertiaDiv);
+      } else {
+        return template.replace('</body>', `${inertiaDiv}</body>`);
+      }
     } else {
-      return template.replace('</body>', `${inertiaDiv}</body>`);
+      return '<h2>Erro: Pasta dist não foi encontrada pelo servidor.</h2>';
     }
   }
 
@@ -96,6 +122,6 @@ const PORT = process.env.PORT || 3000;
 sequelize.sync({ alter: true }).then(() => {
   console.log('Banco de dados sincronizado...');
   app.listen(PORT, () => {
-    console.log(`Servidor rodando em http://localhost:${PORT}`);
+    console.log(`Servidor rodando na porta ${PORT}`);
   });
 });
