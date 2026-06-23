@@ -1,3 +1,4 @@
+import MoradorDTO from '../dtos/MoradorDTO.js';
 import MoradorDataAccess from '../data_access/morador.da.js';
 
 class MoradorController {
@@ -13,13 +14,8 @@ class MoradorController {
     }
 
   create = async (req, res) => {
-    const data = { ...req.body };
-    
-    // Limpeza de dados (apenas números)
-    if (data.cpf) data.cpf = data.cpf.replace(/\D/g, '');
-    if (data.telefone) data.telefone = data.telefone.replace(/\D/g, '');
+    const data = MoradorDTO.fromRequest(req.body);
 
-    // Validação básica
     const validationErrors = this._validate(data);
     if (Object.keys(validationErrors).length > 0) {
       req.session.flash = { error: "campos inválidos" };
@@ -59,13 +55,8 @@ class MoradorController {
 
   update = async (req, res) => {
     const { id } = req.params;
-    const data = { ...req.body };
+    const data = MoradorDTO.fromRequest(req.body);
 
-    // Limpeza de dados
-    if (data.cpf) data.cpf = data.cpf.replace(/\D/g, '');
-    if (data.telefone) data.telefone = data.telefone.replace(/\D/g, '');
-
-    // Validação básica
     const validationErrors = this._validate(data);
     if (Object.keys(validationErrors).length > 0) {
       req.session.flash = { error: "campos inválidos" };
@@ -98,6 +89,7 @@ class MoradorController {
     if (!data.cpf || data.cpf.trim() === '') errors.cpf = 'O CPF é obrigatório.';
     if (data.cpf && data.cpf.length !== 11) errors.cpf = 'O CPF deve conter 11 dígitos.';
     if (!data.numero_casa || data.numero_casa.trim() === '') errors.numero_casa = 'O número da casa é obrigatório.';
+    if (!data.placa_carro || data.placa_carro.trim() === '') errors.placa_carro = 'A placa do carro é obrigatória.';
     return errors;
   }
 
